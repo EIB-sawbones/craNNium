@@ -7,6 +7,7 @@ from keras import metrics
 from keras.callbacks import ModelCheckpoint
 
 from image_processing import ImageProcessing
+import inception_v4
 
 model_filepath = Path("../models/")
 
@@ -26,7 +27,7 @@ class craNNium:
         self.callback = self.compile_model()
 
     def set_architecture(self):
-        input_shape = self.X_train.shape[1:]
+        '''input_shape = self.X_train.shape[1:]
         self.model.add(
             layers.Conv2D(16, (3, 3), activation="relu", input_shape=input_shape)
         )
@@ -38,7 +39,9 @@ class craNNium:
         self.model.add(layers.Flatten())
 
         self.model.add(layers.Dense(32, activation="relu"))
-        self.model.add(layers.Dense(2, activation="softmax"))
+        self.model.add(layers.Dense(2, activation="softmax"))'''
+
+        self.model = inception_v4.create_model(num_classes=2, weights='imagenet', include_top=True)
 
         print("craNNium CNN architecture:")
         print(self.model.summary())
@@ -60,12 +63,14 @@ class craNNium:
         return model_checkpoint_callback
 
     def fit(self, filename='training.model'):
+        X_train = inception_v4.process_all_images(self.X_train)
+        X_val = inception_v4.process_all_images(self.X_val)
         history = self.model.fit(
-            self.X_train,
+            X_train,
             self.y_train,
-            epochs=10,
+            epochs=100,
             batch_size=50,
-            validation_data=(self.X_val, self.y_val),
+            validation_data=(X_val, self.y_val),
             callbacks=[self.callback],
         )
         self.history = history

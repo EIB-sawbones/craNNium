@@ -45,7 +45,7 @@ class ImageProcessing:
 
         return X_test, to_categorical(y_test), X_train, to_categorical(y_train), X_val, to_categorical(y_val)
 
-    def get_classifications(self, filenames, cdr_threshold = 2):
+    def get_classifications(self, filenames, cdr_threshold = 1):
         sample_patient_id = [filename.name.split("_")[0] for filename in filenames]
         sample_condition = np.isin(self.patient_data.Subject, sample_patient_id)
         classifications = self.patient_data.loc[sample_condition, 'cdr'].values
