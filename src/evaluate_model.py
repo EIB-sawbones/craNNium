@@ -13,6 +13,8 @@ def load_test_data():
 if  __name__ == "__main__":
     model =  models.load_test_model(MODEL)  
     (X_test, y_test) = load_test_data()
-    
+
     predict = model.predict(X_test)
-    evalulate = model.evaluate(X_test, y_test)
+    print(predict)
+    evaluate = model.evaluate(X_test, y_test)
+    print(evaluate)
