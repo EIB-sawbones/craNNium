@@ -1,7 +1,7 @@
 # craNNium
 
 
-craNNium is a convolutional neural network that identifies patients with mild-to-severe dementia.
+craNNium is a convolutional neural network that identifies patients with mild-to-severe dementia. craNNium was developed for the Erdos Institute Data Science Bootcamp 2021.
 
 ## Background
 Magnetic resonance imaging (MRI) is one of the primary tools used by physicians to identify dementia. Patients with most types of dementia (Alzheimer's disease, vascular dementia, and frontotemporal lobar degeneration) exhibit structural atrophy in certain regions of the brain. However, identifying the subtle differences in brain structure can be a time-consuming process.
