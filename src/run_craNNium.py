@@ -27,10 +27,6 @@ class craNNium:
             self.X_test = data.X_test
             self.y_test = data.y_test
 
-        network_training.NeuralNetwork(
-            self.X_train, self.y_train, self.X_val, self.y_val, self.X_test, self.y_test, batch_size=5, epochs=100
-        )
-
     def images_already_processed(self):
         return self.train_dir.joinpath("train.npy").is_file()
 
@@ -49,3 +45,13 @@ class craNNium:
 
 if __name__ == "__main__":
     crannium = craNNium()
+    network_training.NeuralNetwork(
+        crannium.X_train,
+        crannium.y_train,
+        crannium.X_val,
+        crannium.y_val,
+        crannium.X_test,
+        crannium.y_test,
+        batch_size=5,
+        epochs=100,
+    )
