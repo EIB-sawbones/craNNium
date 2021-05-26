@@ -79,7 +79,7 @@ class ImageProcessing:
             list: List of scan filenames
         """
         images = []
-        scan_filenames = np.sort(list(scan_dir.glob("*.nii.gz")))
+        scan_filenames = list(scan_dir.glob("*.nii.gz"))
         for scan_filename in scan_filenames:
             scan = nib.load(scan_filename).get_fdata()
             im0, im1, im2 = self.slice_temporal_lobe(scan)
@@ -105,9 +105,9 @@ class ImageProcessing:
         center_i = (n_i - 1) // 2
         center_j = (n_j - 1) // 2
         center_k = (n_k - 1) // 2
-        slice_0 = data[center_i, :, :]
+        slice_0 = data[:, center_j - 10, :]
         slice_1 = data[:, center_j, :]
-        slice_2 = data[:, :, center_k]
+        slice_2 = data[:, center_j + 10, :]
         return slice_0, slice_1, slice_2
 
     def normalize_image(self, im):
@@ -180,26 +180,20 @@ class ImageProcessing:
         val_dir.mkdir(parents=True, exist_ok=True)
         test_dir.mkdir(parents=True, exist_ok=True)
 
-        for i, im in enumerate(self.X_train):
-            out_file = train_dir.joinpath(str(i)+'.npy')
-            with open(out_file, 'wb') as f:
-                np.save(f, im)
+        with open(train_dir.joinpath('train.npy'), 'wb') as f:
+            np.save(f, self.X_train)
 
         with open(train_dir.joinpath('train_labels.npy'), 'wb') as f:
             np.save(f, self.y_train)
 
-        for i, im in enumerate(self.X_val):
-            out_file = val_dir.joinpath(str(i)+'.npy')
-            with open(out_file, 'wb') as f:
-                np.save(f, im)
+        with open(val_dir.joinpath('val.npy'), 'wb') as f:
+            np.save(f, self.X_val)
 
         with open(val_dir.joinpath('val_labels.npy'), 'wb') as f:
             np.save(f, self.y_val)
 
-        for i, im in enumerate(self.X_test):
-            out_file = test_dir.joinpath(str(i)+'.npy')
-            with open(out_file, 'wb') as f:
-                np.save(f, im)
+        with open(test_dir.joinpath('test.npy'), 'wb') as f:
+            np.save(f, self.X_test)
 
         with open(test_dir.joinpath('test_labels.npy'), 'wb') as f:
             np.save(f, self.y_test)

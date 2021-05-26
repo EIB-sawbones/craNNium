@@ -1,5 +1,6 @@
 import pickle
 from pathlib import Path
+from keras import optimizers
 from keras import models
 from keras import losses
 from keras import metrics
@@ -12,7 +13,7 @@ MODEL_DIR = Path("../models/")
 
 
 class NeuralNetwork:
-    def __init__(self, X_train, y_train, X_val, y_val, X_test, y_test):
+    def __init__(self, X_train, y_train, X_val, y_val, X_test, y_test, **kwargs):
 
         self.model_dir = MODEL_DIR
 
@@ -20,7 +21,7 @@ class NeuralNetwork:
         (self.X_val, self.y_val) = (X_val, y_val)
         (self.X_test, self.y_test) = (X_test, y_test)
 
-        self.metrics = [metrics.Recall()]
+        self.metrics = [metrics.Recall(), metrics.Precision(), metrics.AUC()]
         self.model = self.set_architecture()
         self.callback = self.compile_model()
 
@@ -28,22 +29,9 @@ class NeuralNetwork:
         self.X_val = inception_v4.process_all_images(self.X_val)
         self.X_test = inception_v4.process_all_images(self.X_test)
 
-        self.fit()
+        self.fit(**kwargs)
 
     def set_architecture(self):
-        """input_shape = self.X_train.shape[1:]
-        self.model.add(
-            layers.Conv2D(16, (3, 3), activation="relu", input_shape=input_shape)
-        )
-        self.model.add(layers.MaxPooling2D((2, 2), strides=2))
-        self.model.add(layers.Conv2D(32, (3, 3), activation="relu"))
-        self.model.add(layers.MaxPooling2D((2, 2), strides=2))
-        self.model.add(layers.Conv2D(32, (3, 3), activation="relu"))
-
-        self.model.add(layers.Flatten())
-
-        self.model.add(layers.Dense(32, activation="relu"))
-        self.model.add(layers.Dense(2, activation="softmax"))"""
 
         model = inception_v4.create_model(
             num_classes=2, weights="imagenet", include_top=True
@@ -56,9 +44,6 @@ class NeuralNetwork:
     def augment_data(self, batch_size=32):
         gen_train = ImageDataGenerator(
             rotation_range=20,
-            width_shift_range=0.2,
-            height_shift_range=0.2,
-            shear_range=0.2,
             zoom_range=0.2,
             horizontal_flip=True,
             fill_mode="nearest",
@@ -71,7 +56,7 @@ class NeuralNetwork:
 
     def compile_model(self):
         self.model.compile(
-            optimizer="rmsprop",
+            optimizer=optimizers.Adam(learning_rate=1e-3),
             loss=losses.BinaryCrossentropy(from_logits=True),
             metrics=self.metrics,
         )
@@ -79,7 +64,7 @@ class NeuralNetwork:
         model_checkpoint_callback = ModelCheckpoint(
             filepath=self.model_dir,
             save_weights_only=True,
-            monitor="val_{}".format(self.metrics[0].name),
+            monitor="val_recall",
             mode="max",
             save_best_only=True,
         )
@@ -92,7 +77,7 @@ class NeuralNetwork:
         history = self.model.fit(
             gen_train,
             epochs=epochs,
-            steps_per_epoch=len(self.X_train) // batch_size,
+            steps_per_epoch=len(self.X_val) // batch_size,
             validation_data=gen_val,
             callbacks=[self.callback],
             **kwargs
