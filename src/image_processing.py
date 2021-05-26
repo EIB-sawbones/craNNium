@@ -22,14 +22,7 @@ class ImageProcessing:
         self.test_dir = test_dir
         self.patient_data = pd.read_csv(patient_filename)
 
-        (
-            self.X_test,
-            self.y_test,
-            self.X_train,
-            self.y_train,
-            self.X_val,
-            self.y_val,
-        ) = self.process_images()
+        (self.X_test, self.y_test, self.X_train, self.y_train) = self.process_images()
 
     def process_images(self):
         test_images, test_filenames = self.processing_pipeline(self.test_dir)
@@ -38,18 +31,16 @@ class ImageProcessing:
         test_class = self.get_classifications(test_filenames)
         train_class = self.get_classifications(train_filenames)
 
-        X_train, X_val, y_train, y_val = self.split_train_test(
-            train_images, train_class
-        )
+        X_train, y_train = train_images, train_class
         X_test, y_test = test_images, test_class
 
-        return X_test, to_categorical(y_test), X_train, to_categorical(y_train), X_val, to_categorical(y_val)
+        return X_test, to_categorical(y_test), X_train, to_categorical(y_train)
 
-    def get_classifications(self, filenames, cdr_threshold = 1):
+    def get_classifications(self, filenames, cdr_threshold=1):
         sample_patient_id = [filename.name.split("_")[0] for filename in filenames]
         sample_condition = np.isin(self.patient_data.Subject, sample_patient_id)
-        classifications = self.patient_data.loc[sample_condition, 'cdr'].values
-        return (classifications >= cdr_threshold)
+        classifications = self.patient_data.loc[sample_condition, "cdr"].values
+        return classifications >= cdr_threshold
 
     def processing_pipeline(self, scan_dir):
         images = []
@@ -62,7 +53,7 @@ class ImageProcessing:
             im = self.crop_image(im)
             images.append(im[np.newaxis])
         images = np.vstack(images)
-        return images[:,:,:,np.newaxis], scan_filenames
+        return images[:, :, :, np.newaxis], scan_filenames
 
     def slice_temporal_lobe(self, data):
         n_i, n_j, n_k = data.shape
@@ -75,7 +66,7 @@ class ImageProcessing:
         return slice_0, slice_1, slice_2
 
     def normalize_image(self, im):
-        return im / im.max()
+        return im / np.percentile(im, 99)
 
     def split_train_test(self, X, y, test_size=0.2, random_state=440):
         X_train, X_val, y_train, y_val = train_test_split(
