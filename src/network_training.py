@@ -1,31 +1,34 @@
-import numpy as np
 import pickle
 from pathlib import Path
-from keras import Sequential
 from keras import models
-from keras import layers
 from keras import losses
 from keras import metrics
 from keras.callbacks import ModelCheckpoint
 from keras.preprocessing.image import ImageDataGenerator
 
-from image_processing import ImageProcessing
 import inception_v4
 
-model_filepath = Path("../models/")
+MODEL_DIR = Path("../models/")
 
 
-class craNNium:
-    def __init__(self):
-        self.data = ImageProcessing()
+class NeuralNetwork:
+    def __init__(self, X_train, y_train, X_val, y_val, X_test, y_test):
 
-        self.X_train = self.data.X_train
-        self.y_train = self.data.y_train
+        self.model_dir = MODEL_DIR
 
-        self.model = models.Sequential()
+        (self.X_train, self.y_train) = (X_train, y_train)
+        (self.X_val, self.y_val) = (X_val, y_val)
+        (self.X_test, self.y_test) = (X_test, y_test)
+
         self.metrics = [metrics.Recall()]
-        self.set_architecture()
+        self.model = self.set_architecture()
         self.callback = self.compile_model()
+
+        self.X_train = inception_v4.process_all_images(self.X_train)
+        self.X_val = inception_v4.process_all_images(self.X_val)
+        self.X_test = inception_v4.process_all_images(self.X_test)
+
+        self.fit()
 
     def set_architecture(self):
         """input_shape = self.X_train.shape[1:]
@@ -42,15 +45,16 @@ class craNNium:
         self.model.add(layers.Dense(32, activation="relu"))
         self.model.add(layers.Dense(2, activation="softmax"))"""
 
-        self.model = inception_v4.create_model(
+        model = inception_v4.create_model(
             num_classes=2, weights="imagenet", include_top=True
         )
 
         print("craNNium CNN architecture:")
-        print(self.model.summary())
+        print(model.summary())
+        return model
 
-    def generate_data(self, validation_split=0.3):
-        datagen = ImageDataGenerator(
+    def augment_data(self, batch_size=32):
+        gen_train = ImageDataGenerator(
             rotation_range=20,
             width_shift_range=0.2,
             height_shift_range=0.2,
@@ -58,9 +62,12 @@ class craNNium:
             zoom_range=0.2,
             horizontal_flip=True,
             fill_mode="nearest",
-            validation_split=validation_split
+        ).flow(self.X_train, self.y_train, batch_size=batch_size)
+
+        gen_val = ImageDataGenerator().flow(
+            self.X_val, self.y_val, batch_size=batch_size
         )
-        return datagen
+        return gen_train, gen_val
 
     def compile_model(self):
         self.model.compile(
@@ -70,7 +77,7 @@ class craNNium:
         )
 
         model_checkpoint_callback = ModelCheckpoint(
-            filepath=model_filepath,
+            filepath=self.model_dir,
             save_weights_only=True,
             monitor="val_{}".format(self.metrics[0].name),
             mode="max",
@@ -78,26 +85,23 @@ class craNNium:
         )
         return model_checkpoint_callback
 
-    def fit(self, filename="training.model", epochs=100, batch_size=10, validation_split=0.3, **kwargs):
-        X_train = inception_v4.process_all_images(self.X_train)
-        
-        gen = self.generate_data(validation_split=validation_split)
-        gen_train = gen.flow(X_train, self.y_train, batch_size=batch_size, subset='training')
-        gen_val = gen.flow(X_train, self.y_train, batch_size=batch_size, subset='validation')
+    def fit(self, filename="training.model", epochs=100, batch_size=32, **kwargs):
+
+        gen_train, gen_val = self.augment_data(batch_size=batch_size)
+
         history = self.model.fit(
             gen_train,
             epochs=epochs,
-            steps_per_epoch=len(X_train) / batch_size,
+            steps_per_epoch=len(self.X_train) // batch_size,
             validation_data=gen_val,
             callbacks=[self.callback],
             **kwargs
         )
         self.history = history
-        self.model.save(model_filepath / filename)
-        with open(model_filepath / filename+'.history', 'wb') as f:
+        self.model.save(self.model_dir.joinpath(filename))
+        with open(self.model_dir.joinpath(filename+".history"), "wb") as f:
             pickle.dump(self.history.history, f)
 
 
 if __name__ == "__main__":
-    cnn = craNNium()
-    cnn.fit()
+    cnn = NeuralNetwork()

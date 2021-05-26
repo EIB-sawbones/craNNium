@@ -292,7 +292,7 @@ def inception_v4(num_classes, dropout_keep_prob, weights, include_top):
 				'inception-v4_weights_tf_dim_ordering_tf_kernels.h5',
 				WEIGHTS_PATH,
 				cache_subdir='models',
-				md5_hash='9fe79d77f793fe874470d84ca6ba4a3b')
+				md5_hash='75c55e160d920782f93d1ea399fc9bb6')
 		else:
 			weights_path = get_file(
 				'inception-v4_weights_tf_dim_ordering_tf_kernels_notop.h5',
