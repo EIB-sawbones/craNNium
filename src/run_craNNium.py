@@ -45,13 +45,12 @@ class craNNium:
 
 if __name__ == "__main__":
     crannium = craNNium()
-    network_training.NeuralNetwork(
+    cnn = network_training.NeuralNetwork(
         crannium.X_train,
         crannium.y_train,
         crannium.X_val,
         crannium.y_val,
         crannium.X_test,
         crannium.y_test,
-        batch_size=5,
-        epochs=100,
     )
+    cnn.fit(batch_size=5, epochs=100)
