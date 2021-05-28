@@ -64,10 +64,12 @@ class ImageProcessing:
         Returns:
             ndarray: Labels for input filenames
         """
-        sample_patient_id = [filename.name.split("_")[0] for filename in filenames]
-        sample_condition = np.isin(self.patient_data.Subject, sample_patient_id)
-        classifications = self.patient_data.loc[sample_condition, "cdr"].values
-        return classifications >= cdr_threshold
+        classifications = []
+        for filename in filenames:
+            sample_patient_id = filename.name.split("_")[0]
+            sample_condition = self.patient_data.Subject == sample_patient_id
+            classifications.append(self.patient_data.loc[sample_condition, "cdr"].values >= cdr_threshold)
+        return np.asarray(classifications)
 
     def processing_pipeline(self, scan_dir):
         """Extract slices through the temporal lobe from each scan
@@ -81,24 +83,22 @@ class ImageProcessing:
         """
         images = []
         scan_filenames = list(scan_dir.glob("*.nii.gz"))
+        out_filenames = []
         for scan_filename in scan_filenames:
             scan = nib.load(scan_filename).get_fdata()
 
             scan_new = self.crop_scan(scan)
-            im_stacked = []
             for im in self.slice_temporal_lobe(scan_new):
                 im_new = self.normalize_image(im)
                 im_new = im_new[:, :, np.newaxis]
                 im_new = smart_resize(im_new, size=self.desired_image_size)
-                im_stacked.append(im_new)
-
-            im_stacked = np.dstack(im_stacked)
-            images.append(im_stacked[np.newaxis])
+                images.append(im_new[np.newaxis])
+                out_filenames.append(scan_filename)
 
         images = np.vstack(images)
-        return images, scan_filenames
+        return images, out_filenames
 
-    def slice_temporal_lobe(self, data, num_slices=3):
+    def slice_temporal_lobe(self, data, num_slices=5):
         """Slice the input scan through the temporal lobe
 
         Args:
@@ -113,7 +113,7 @@ class ImageProcessing:
         center_j = (n_j - 1) // 2
         slices = []
         for i in range(-num_slices//2, num_slices//2, 1):
-            slices.append(data[:, center_j + i, :])
+            slices.append(data[:, center_j + 3*i, :])
         return slices
 
     def normalize_image(self, im):

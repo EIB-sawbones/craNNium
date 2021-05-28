@@ -16,36 +16,42 @@ We select patients from OASIS-3 by identifying equal numbers of patients with Cl
 
 We pre-pre-process each scan by running each image through [fsl_anat](https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/fsl_anat)<sup>[3]</sup>, a common pipeline for processing MRI scans. [fsl_anat](https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/fsl_anat) re-orients and crops each scan, aligns the patient head onto a common centerpoint, and extracts the brain.
 
-From each brain, we collect a central slice from a "top-down" orientation. We then pre-process each image by normalizing by the 99th percentile pixel value, to account for noise-related spikes in pixel value. A subset of the pre-processed images are shown below.
+From each brain, we collect 5 central slices, each 3 pixels apart, from a "top-down" orientation. We then pre-process each image by normalizing by the 99th percentile pixel value, to account for noise-related spikes in pixel value. A subset of the pre-processed images are shown below.
 
 ![](brains.png)
 
-We run the images through Google's Inception_v4 convolutional neural network architecture <sup>[4]</sup>. Inception_v4 consists of many individual networks run in series, then consolidated at the end. Inception_v4 has been shown to have high accuracy with relatively low computational cost when  run on 2-D image classification. A diagram of the architecture (originally from [1]) is shown below. After the images are run through each step, the outputs are run through a fully-connected dense layer with a `softmax` activation function.
+We split our data into 20% test, 80% training. From the training set, we extract 30% of the images for a validation set. We end up with 800 training images.
 
-We split our data into 20% test, 80% training. From the training set, we extract 30% of the images for a validation set.
+We run the images through a custom convolutional neural network architecture based on the simple architectures explored in lecture. We explored a number of different architectures, including Google's highly complex Inception_v4 architecture, but the more complex architectures tended to immediately overfit the data. We ultimately decide on the following simple architecture:
 
-To stop the network from getting caught training on unwanted features in the images, we apply random transformations to each training image, keeping the original as well. We apply rotations, horizontal flips, and zooms to each training image.
+1. Input pooling layer with window size 3x3
+2. An additional pooling layer with window size 3x3
+2. 9 convolutional layers with depth 16, window size 3x3
+3. A flattening layer to flatten the CNN feature array
+4. A fully connected dense layer (size 16) that combines features
+5. An output dense layer of size 2, for the two classes (dementia or no dementia)
+
+We use ReLU activation functions in all but the output layer, where instead we use Softmax.
 
 Finally, we run the network for 100 epochs, validating against a recall score. We choose recall as our metric since physicians likely want to identify as many true-dementia patients as possible, even if it brings along false positives.
 
-![](inception_v4.png)
 
 ## Results
 
-We find that the network is not able to learn well from the images and generalize to the validation set. Regardless of epoch, the recall score of both the training and validation sets hover around 50%, as seen below.
+Given the simplicity of our network architecture, we find that the network is able to learn fairly well from the images and generalize to the validation set. As shown below, the recall score for the training set begins to overfit after ~100 epochs. The validation set recall maxes out at epoch 93, returning 86% recall.
 
 ![](performance.png)
 
 Our results suggest a few things.
-1. In order to fit the training sample better, more complex pre-processing (e.g, including multiple slices from each patient), or a more specialized model construction+tuning phase may be necessary.
-2. In order to generalize better to untrained data, more patient data may be required. Deep learning techniques benefit from larger sample sizes, and 200 images are likely not enough.
-3. [1] use a similar method, but in the final layer of their network they add bias-features in the form of patient age, sex, and slice location. These features likely help the network since real-life dementia diagnoses rely on all three parameters.
+1. In order to fit the training sample better, more complex pre-processing (e.g, including more slices or the full scan from each patient), or a more specialized architecture construction+tuning phase may be necessary.
+2. In order to generalize better to untrained data, more patient data may be required. Deep learning techniques benefit from larger sample sizes, and 800 training images are likely not enough.
+3. Bae et al<sup>[1]</sup> use the Inception_v4 architecture, but in the final layer of their network they add bias-features in the form of patient age, sex, and slice location. Along with their larger sample size, they find better scores, potentially indicating these additional features are likely important factors.
 
 ## Reproducing Results
 
-Since data were provided by OASIS-3, we cannot upload the raw scans. However, we do include the pre-processed test slices.  With the full data set, `src/run_craNNium.py` runs the full processing and training steps. 
+Since data were provided by OASIS-3, we cannot upload the raw scans. However, we do include the pre-processed training, validation, and test slices in `data/images/`. With the full data set, `src/run_craNNium.py` runs the full processing and training steps.
 
-The final trained model can be found [here](https://drive.google.com/file/d/1Z4BETLc7Q1GfsbRlBHW2i0vflYsE3iRU/view?usp=sharing). Unpack `model.tar.gz` into the `models/` directory, and run `src/evaluate_model.py`to run on the test data. Test data and labels can be found in `data/images/test/`.
+The final trained model, history, and checkpoint@highest recall can be found in `models/`. We provide an evaluation script `src/evaluate_model.py` that reproduces our performance plot and applies the model to the testing data.
 
 ## Acknowledgements
 

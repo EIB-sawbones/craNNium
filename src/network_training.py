@@ -22,17 +22,34 @@ class NeuralNetwork:
     def set_architecture(self):
         model = models.Sequential()
 
-        model.add(
-            layers.Conv2D(32, (3, 3), activation="relu", input_shape=(150, 150, 3))
-        )
-        model.add(layers.MaxPooling2D((2, 2), strides=2))
-        model.add(layers.Conv2D(64, (3, 3), activation="relu"))
-        model.add(layers.MaxPooling2D((2, 2), strides=2))
-        model.add(layers.Conv2D(64, (3, 3), activation="relu"))
+        model.add(layers.MaxPooling2D((3,3), strides=2, input_shape=(150,150,1), padding="same"))
 
+        model.add(layers.MaxPooling2D((3,3), strides=2, padding="same"))
+
+        model.add(layers.Conv2D(16, (3,3), strides = 1, activation="relu", 
+                                    padding="same"))
+        model.add(layers.Conv2D(16, (3,3), strides = 1, activation="relu", 
+                                    padding="same"))
+        model.add(layers.Conv2D(16, (3,3), strides = 1, activation="relu", 
+                                    padding="same"))
+
+        model.add(layers.Conv2D(16, (3,3), strides = 1, activation="relu", 
+                                    padding="same"))
+        model.add(layers.Conv2D(16, (3,3), strides = 1, activation="relu", 
+                                    padding="same"))
+        model.add(layers.Conv2D(16, (3,3), strides = 1, activation="relu", 
+                                    padding="same"))
+
+        model.add(layers.Conv2D(16, (3,3), strides = 1, activation="relu", 
+                                    padding="same"))
+        model.add(layers.Conv2D(16, (3,3), strides = 1, activation="relu", 
+                                    padding="same"))
+        model.add(layers.Conv2D(16, (3,3), strides = 1, activation="relu", 
+                                    padding="same"))
         model.add(layers.Flatten())
-        model.add(layers.Dense(64, activation="relu"))
+        model.add(layers.Dense(16, activation="relu"))
         model.add(layers.Dense(2, activation="softmax"))
+
 
         print("craNNium CNN architecture:")
         print(model.summary())
@@ -40,8 +57,8 @@ class NeuralNetwork:
 
     def compile_model(self):
         self.model.compile(
-            optimizer=optimizers.Adam(learning_rate=1e-3),
-            loss=losses.BinaryCrossentropy(from_logits=True),
+            optimizer='sgd',
+            loss='categorical_crossentropy',
             metrics=self.metrics,
         )
 
