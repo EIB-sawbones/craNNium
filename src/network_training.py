@@ -1,13 +1,7 @@
 import pickle
 from pathlib import Path
-from keras import optimizers
-from keras import models
-from keras import losses
-from keras import metrics
+from keras import optimizers, models, losses, metrics, layers
 from keras.callbacks import ModelCheckpoint
-from keras.preprocessing.image import ImageDataGenerator
-
-import inception_v4
 
 MODEL_DIR = Path("../models/")
 
@@ -25,34 +19,24 @@ class NeuralNetwork:
         self.model = self.set_architecture()
         self.callback = self.compile_model()
 
-        self.X_train = inception_v4.process_all_images(self.X_train)
-        self.X_val = inception_v4.process_all_images(self.X_val)
-        self.X_test = inception_v4.process_all_images(self.X_test)
-
-        self.fit(**kwargs)
-
     def set_architecture(self):
+        model = models.Sequential()
 
-        model = inception_v4.create_model(
-            num_classes=2, weights="imagenet", include_top=True
+        model.add(
+            layers.Conv2D(32, (3, 3), activation="relu", input_shape=(150, 150, 3))
         )
+        model.add(layers.MaxPooling2D((2, 2), strides=2))
+        model.add(layers.Conv2D(64, (3, 3), activation="relu"))
+        model.add(layers.MaxPooling2D((2, 2), strides=2))
+        model.add(layers.Conv2D(64, (3, 3), activation="relu"))
+
+        model.add(layers.Flatten())
+        model.add(layers.Dense(64, activation="relu"))
+        model.add(layers.Dense(2, activation="softmax"))
 
         print("craNNium CNN architecture:")
         print(model.summary())
         return model
-
-    def augment_data(self, batch_size=32):
-        gen_train = ImageDataGenerator(
-            rotation_range=20,
-            zoom_range=0.2,
-            horizontal_flip=True,
-            fill_mode="nearest",
-        ).flow(self.X_train, self.y_train, batch_size=batch_size)
-
-        gen_val = ImageDataGenerator().flow(
-            self.X_val, self.y_val, batch_size=batch_size
-        )
-        return gen_train, gen_val
 
     def compile_model(self):
         self.model.compile(
@@ -72,19 +56,17 @@ class NeuralNetwork:
 
     def fit(self, filename="training.model", epochs=100, batch_size=32, **kwargs):
 
-        gen_train, gen_val = self.augment_data(batch_size=batch_size)
-
         history = self.model.fit(
-            gen_train,
+            self.X_train,
+            self.y_train,
             epochs=epochs,
-            steps_per_epoch=len(self.X_val) // batch_size,
-            validation_data=gen_val,
+            validation_data=(self.X_val, self.y_val),
             callbacks=[self.callback],
             **kwargs
         )
         self.history = history
         self.model.save(self.model_dir.joinpath(filename))
-        with open(self.model_dir.joinpath(filename+".history"), "wb") as f:
+        with open(self.model_dir.joinpath(filename + ".history"), "wb") as f:
             pickle.dump(self.history.history, f)
 
 

@@ -3,6 +3,7 @@ import nibabel as nib
 import numpy as np
 import pandas as pd
 from keras.utils import to_categorical
+from keras.preprocessing.image import smart_resize
 from sklearn.model_selection import train_test_split
 
 SCAN_DIR = Path("../data/scans/")
@@ -82,15 +83,22 @@ class ImageProcessing:
         scan_filenames = list(scan_dir.glob("*.nii.gz"))
         for scan_filename in scan_filenames:
             scan = nib.load(scan_filename).get_fdata()
-            im0, im1, im2 = self.slice_temporal_lobe(scan)
 
-            im = self.normalize_image(im1)  # keep im1 for now
-            im = self.crop_image(im)
-            images.append(im[np.newaxis])
+            scan_new = self.crop_scan(scan)
+            im_stacked = []
+            for im in self.slice_temporal_lobe(scan_new):
+                im_new = self.normalize_image(im)
+                im_new = im_new[:, :, np.newaxis]
+                im_new = smart_resize(im_new, size=self.desired_image_size)
+                im_stacked.append(im_new)
+
+            im_stacked = np.dstack(im_stacked)
+            images.append(im_stacked[np.newaxis])
+
         images = np.vstack(images)
-        return images[:, :, :, np.newaxis], scan_filenames
+        return images, scan_filenames
 
-    def slice_temporal_lobe(self, data):
+    def slice_temporal_lobe(self, data, num_slices=3):
         """Slice the input scan through the temporal lobe
 
         Args:
@@ -102,13 +110,11 @@ class ImageProcessing:
             ndarray: Slice along z axis
         """
         n_i, n_j, n_k = data.shape
-        center_i = (n_i - 1) // 2
         center_j = (n_j - 1) // 2
-        center_k = (n_k - 1) // 2
-        slice_0 = data[:, center_j - 10, :]
-        slice_1 = data[:, center_j, :]
-        slice_2 = data[:, center_j + 10, :]
-        return slice_0, slice_1, slice_2
+        slices = []
+        for i in range(-num_slices//2, num_slices//2, 1):
+            slices.append(data[:, center_j + i, :])
+        return slices
 
     def normalize_image(self, im):
         """Normalize image to 99th percentile to account for bright pixels
@@ -121,7 +127,7 @@ class ImageProcessing:
         """
         return im / np.percentile(im, 99)
 
-    def split_train_test(self, test_size=0.2, random_state=440):
+    def split_train_test(self, test_size=0.3, random_state=1):
         """Split training sample into training and validation
 
         Args:
@@ -143,7 +149,7 @@ class ImageProcessing:
         )
         return X_train, X_val, y_train, y_val
 
-    def crop_image(self, im):
+    def crop_scan(self, scan):
         """Crop 2D image to standard shape
 
         Args:
@@ -152,22 +158,11 @@ class ImageProcessing:
         Returns:
             ndarray: Cropped output image
         """
-        diff_x = im.shape[1] - self.desired_image_size[1]
-        diff_y = im.shape[0] - self.desired_image_size[0]
-        assert diff_x >= 0, "Attempting to crop a smaller image"
-        assert diff_y >= 0, "Attempting to crop a smaller image"
-
-        if not (diff_x % 2):  # even size
-            left, right = diff_x // 2, im.shape[1] - diff_x // 2
-        else:
-            left, right = diff_x // 2, (im.shape[1] - diff_x // 2) - 1
-
-        if not (diff_y % 2):  # even size
-            top, bottom = diff_y // 2, im.shape[0] - diff_y // 2
-        else:
-            top, bottom = diff_y // 2, (im.shape[0] - diff_y // 2) - 1
-
-        return im[top:bottom, left:right]
+        x, y, z = np.nonzero(scan)
+        xl,xr = x.min(),x.max()
+        yl,yr = y.min(),y.max()
+        zl,zr = z.min(),z.max()
+        return scan[xl:xr+1, yl:yr+1]
 
     def save_images(self):
         """Save training, validation, and testing images + labels
