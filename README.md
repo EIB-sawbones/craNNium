@@ -33,7 +33,7 @@ We run the images through a custom convolutional neural network architecture bas
 
 We use ReLU activation functions in all but the output layer, where instead we use Softmax.
 
-Finally, we run the network for 100 epochs, validating against a recall score. We choose recall as our metric since physicians likely want to identify as many true-dementia patients as possible, even if it brings along false positives.
+Finally, we run the network for 200 epochs, validating against a recall score. We choose recall as our metric since physicians likely want to identify as many true-dementia patients as possible, even if it brings along false positives.
 
 
 ## Results
